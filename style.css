@@ -1,0 +1,19 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+#map {
+    height: 80vh;
+    width: 90%;
+    margin: auto;
+    border: 1px solid #ccc;
+}
+
+.controls {
+    margin: 10px 0;
+}
+
+.controls label {
+    margin-right: 10px;
+}
