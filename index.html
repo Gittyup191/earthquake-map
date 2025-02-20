@@ -18,10 +18,26 @@
             margin: auto;
             border: 1px solid #ccc;
         }
+        .controls {
+            margin: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>US Earthquake Map</h1>
+    <div class="controls">
+        <label>Time Range:</label>
+        <input type="range" id="timeRange" min="0" max="365" value="365">
+        <span id="timeLabel">Last 365 Days</span>
+        <br>
+        <button id="playPause">Play</button>
+        <label>Speed:</label>
+        <input type="range" id="speedControl" min="1" max="10" value="5">
+        <span id="speedLabel">Speed: 5</span>
+        <br>
+        <label>Loop:</label>
+        <input type="checkbox" id="loopControl">
+    </div>
     <div id="map"></div>
     <script>
         let map = L.map('map').setView([37.0902, -95.7129], 4);
@@ -30,30 +46,90 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        let earthquakes = [];
+        let circles = [];
+        let playing = false;
+        let currentDay = 0;
+        let speed = 5;
+        let loop = false;
+        
         function fetchEarthquakeData() {
             fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson")
                 .then(response => response.json())
                 .then(data => {
-                    data.features.forEach(quake => {
+                    earthquakes = data.features.map(quake => {
                         const [lng, lat] = quake.geometry.coordinates;
-                        const magnitude = quake.properties.mag;
-                        const time = quake.properties.time;
-                        const age = Date.now() - time;
-
-                        let color;
-                        if (age < 86400000) color = "red";
-                        else if (age < 604800000) color = "orange";
-                        else color = "yellow";
-
-                        L.circle([lat, lng], {
-                            color: color,
-                            fillColor: color,
-                            fillOpacity: 0.6,
-                            radius: magnitude * 50000
-                        }).addTo(map);
+                        return {
+                            lat, lng,
+                            magnitude: quake.properties.mag,
+                            time: quake.properties.time
+                        };
                     });
+                    updateMap();
                 })
                 .catch(error => console.error("Error fetching earthquake data:", error));
+        }
+
+        function getColor(time) {
+            const age = (Date.now() - time) / (1000 * 60 * 60 * 24);
+            if (age < 1) return "red";
+            if (age < 7) return "orange";
+            if (age < 30) return "yellow";
+            return "white";
+        }
+
+        function updateMap() {
+            circles.forEach(circle => map.removeLayer(circle));
+            circles = [];
+            
+            earthquakes.forEach(quake => {
+                const ageInDays = (Date.now() - quake.time) / (1000 * 60 * 60 * 24);
+                if (ageInDays > currentDay && ageInDays <= currentDay + parseInt(document.getElementById("timeRange").value)) {
+                    let circle = L.circle([quake.lat, quake.lng], {
+                        color: getColor(quake.time),
+                        fillColor: getColor(quake.time),
+                        fillOpacity: 0.6,
+                        radius: quake.magnitude * 50000
+                    }).addTo(map);
+                    circles.push(circle);
+                }
+            });
+        }
+
+        document.getElementById("timeRange").addEventListener("input", function() {
+            document.getElementById("timeLabel").textContent = `Last ${this.value} Days`;
+            updateMap();
+        });
+
+        document.getElementById("speedControl").addEventListener("input", function() {
+            speed = this.value;
+            document.getElementById("speedLabel").textContent = `Speed: ${speed}`;
+        });
+
+        document.getElementById("loopControl").addEventListener("change", function() {
+            loop = this.checked;
+        });
+
+        document.getElementById("playPause").addEventListener("click", function() {
+            playing = !playing;
+            this.textContent = playing ? "Pause" : "Play";
+            if (playing) animateMap();
+        });
+
+        function animateMap() {
+            if (!playing) return;
+            currentDay += speed / 5;
+            if (currentDay > 365) {
+                if (loop) {
+                    currentDay = 0;
+                } else {
+                    playing = false;
+                    document.getElementById("playPause").textContent = "Play";
+                    return;
+                }
+            }
+            updateMap();
+            setTimeout(animateMap, 500);
         }
 
         fetchEarthquakeData();
