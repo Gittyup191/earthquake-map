@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>US Earthquake Map</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
-    <script src="script.js" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,40 +24,39 @@
     <h1>US Earthquake Map</h1>
     <div id="map"></div>
     <script>
-        let map;
-        function initMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 37.0902, lng: -95.7129 },
-                zoom: 4,
-            });
-            fetchEarthquakeData();
-        }
+        let map = L.map('map').setView([37.0902, -95.7129], 4);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
         function fetchEarthquakeData() {
             fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson")
                 .then(response => response.json())
                 .then(data => {
                     data.features.forEach(quake => {
-                        const coords = quake.geometry.coordinates;
+                        const [lng, lat] = quake.geometry.coordinates;
                         const magnitude = quake.properties.mag;
                         const time = quake.properties.time;
                         const age = Date.now() - time;
+
                         let color;
                         if (age < 86400000) color = "red";
                         else if (age < 604800000) color = "orange";
                         else color = "yellow";
-                        new google.maps.Circle({
-                            strokeColor: color,
+
+                        L.circle([lat, lng], {
+                            color: color,
                             fillColor: color,
                             fillOpacity: 0.6,
-                            map,
-                            center: { lat: coords[1], lng: coords[0] },
-                            radius: magnitude * 50000,
-                        });
+                            radius: magnitude * 50000
+                        }).addTo(map);
                     });
                 })
                 .catch(error => console.error("Error fetching earthquake data:", error));
         }
+
+        fetchEarthquakeData();
     </script>
 </body>
 </html>
