@@ -1,6 +1,6 @@
 let map;
 let earthquakes = [];
-let timelineRange = [Date.now() - 31536000000, Date.now()]; // Default to last year
+let currentTime;
 let playbackSpeed = 1000; // 1 month = 10 sec
 let playing = false;
 let loop = false;
@@ -31,21 +31,26 @@ function fetchEarthquakeData() {
                     time: quake.properties.time
                 };
             });
+
+            // Start at the earliest earthquake
+            currentTime = Math.min(...earthquakes.map(q => q.time));
+
             updateMap();
         })
         .catch(error => console.error("Error fetching earthquake data:", error));
 }
 
-// Update the map based on the timeline
+// Update the map by adding earthquakes that have occurred up to `currentTime`
 function updateMap() {
     map.eachLayer(layer => {
         if (layer instanceof L.Circle) map.removeLayer(layer);
     });
 
     earthquakes.forEach(quake => {
-        if (quake.time >= timelineRange[0] && quake.time <= timelineRange[1]) {
-            let age = Date.now() - quake.time;
-            let color = age < 3600000 ? "red" : age < 86400000 ? "orange" : age < 604800000 ? "yellow" : "white";
+        if (quake.time <= currentTime) {
+            let age = currentTime - quake.time;
+            let color = getColorByAge(age);
+
             L.circle([quake.lat, quake.lng], {
                 color,
                 fillColor: color,
@@ -56,30 +61,33 @@ function updateMap() {
     });
 }
 
-// Timeline control
-document.getElementById("timeline").addEventListener("input", (e) => {
-    let daysAgo = e.target.value;
-    timelineRange[0] = Date.now() - daysAgo * 86400000;
-    updateMap();
-});
+// Determine color based on earthquake age
+function getColorByAge(age) {
+    if (age < 3600000) return "red";         // Less than 1 hour old
+    if (age < 86400000) return "orange";     // Less than 1 day old
+    if (age < 604800000) return "yellow";    // Less than 1 week old
+    if (age < 2592000000) return "white";    // Less than 1 month old
+    return null; // Older than 1 month (won't be shown)
+}
 
-// Playback control
+// Start playback
 document.getElementById("play").addEventListener("click", () => {
     if (playing) {
         clearInterval(interval);
         playing = false;
     } else {
         interval = setInterval(() => {
-            timelineRange[0] += 86400000;
-            timelineRange[1] += 86400000;
-            if (timelineRange[1] > Date.now()) {
+            currentTime += 86400000; // Move forward one day
+
+            if (currentTime > Date.now()) {
                 if (loop) {
-                    timelineRange = [Date.now() - 31536000000, Date.now()];
+                    currentTime = Math.min(...earthquakes.map(q => q.time)); // Restart at the beginning
                 } else {
                     clearInterval(interval);
                     playing = false;
                 }
             }
+
             updateMap();
         }, playbackSpeed);
         playing = true;
@@ -88,7 +96,7 @@ document.getElementById("play").addEventListener("click", () => {
 
 // Speed control
 document.getElementById("speed").addEventListener("input", (e) => {
-    playbackSpeed = 1000 - e.target.value;
+    playbackSpeed = 2000 - e.target.value;
 });
 
 // Loop toggle
