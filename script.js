@@ -1,7 +1,7 @@
 let map;
 let earthquakes = [];
 let currentTime;
-let playbackSpeed = 1000; // 1 month = 10 sec
+let playbackSpeed = 1000; // Default speed
 let playing = false;
 let loop = false;
 let interval;
@@ -33,9 +33,16 @@ function fetchEarthquakeData() {
             });
 
             // Start at the earliest earthquake
-            currentTime = Math.min(...earthquakes.map(q => q.time));
+            let earliestTime = Math.min(...earthquakes.map(q => q.time));
+            let latestTime = Date.now();
+
+            currentTime = earliestTime;
+
+            document.getElementById("startDateLabel").textContent = formatDate(earliestTime);
+            document.getElementById("endDateLabel").textContent = formatDate(latestTime);
 
             updateMap();
+            updateDateDisplay();
         })
         .catch(error => console.error("Error fetching earthquake data:", error));
 }
@@ -70,6 +77,17 @@ function getColorByAge(age) {
     return null; // Older than 1 month (won't be shown)
 }
 
+// Format timestamp into readable date
+function formatDate(timestamp) {
+    let date = new Date(timestamp);
+    return date.toISOString().split("T")[0]; // YYYY-MM-DD format
+}
+
+// Update the date display
+function updateDateDisplay() {
+    document.getElementById("currentDate").textContent = formatDate(currentTime);
+}
+
 // Start playback
 document.getElementById("play").addEventListener("click", () => {
     if (playing) {
@@ -89,6 +107,7 @@ document.getElementById("play").addEventListener("click", () => {
             }
 
             updateMap();
+            updateDateDisplay();
         }, playbackSpeed);
         playing = true;
     }
@@ -97,11 +116,27 @@ document.getElementById("play").addEventListener("click", () => {
 // Speed control
 document.getElementById("speed").addEventListener("input", (e) => {
     playbackSpeed = 2000 - e.target.value;
+    let speedLabel = "Normal";
+    if (playbackSpeed < 750) speedLabel = "Fast";
+    else if (playbackSpeed > 1250) speedLabel = "Slow";
+    document.getElementById("speedLabel").textContent = speedLabel;
 });
 
 // Loop toggle
 document.getElementById("loop").addEventListener("change", (e) => {
     loop = e.target.checked;
+});
+
+// Time Range Control
+document.getElementById("timeRange").addEventListener("input", (e) => {
+    let rangeDays = parseInt(e.target.value);
+    let earliestTime = Math.min(...earthquakes.map(q => q.time));
+    let latestTime = Date.now();
+
+    currentTime = latestTime - (rangeDays * 86400000);
+    document.getElementById("startDateLabel").textContent = formatDate(currentTime);
+    updateMap();
+    updateDateDisplay();
 });
 
 window.onload = initMap;
