@@ -1,6 +1,21 @@
 #controls {
     margin: 10px;
     text-align: center;
+    padding: 10px;
+    background-color: #f0f0f0; /* Light gray background */
+    border-radius: 5px;
+}
+
+#controls button,
+#controls input[type="range"] {
+    margin: 5px;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+#controls input[type="range"] {
+    width: 200px;
 }
 
 #dateDisplay {
@@ -12,4 +27,40 @@
     border-radius: 5px;
     font-size: 16px;
     font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+}
+
+#map{
+    height: 600px; /*sets height of map*/
+}
+
+#startDateLabel, #endDateLabel{
+    font-size: 12px;
+}
+
+#speedLabel{
+    font-size: 12px;
+}
+
+/* Example media query for mobile devices */
+@media (max-width: 600px) {
+    #controls {
+        padding: 5px;
+    }
+
+    #controls button,
+    #controls input[type="range"] {
+        padding: 5px 8px;
+    }
+
+    #controls input[type="range"] {
+        width: 150px;
+    }
+
+    #dateDisplay {
+        font-size: 14px;
+    }
+    #map{
+        height: 400px;
+    }
 }
