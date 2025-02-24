@@ -60,7 +60,10 @@ async function fetchEarthquakeData() { // Use async/await for cleaner code
 function updateMap() {
     quakeLayerGroup.clearLayers(); // Clear existing markers
 
-    earthquakes.forEach(quake => {
+    // Reverse the earthquakes array so that the latest earthquakes are processed last.
+    const reversedEarthquakes = [...earthquakes].reverse();
+
+    reversedEarthquakes.forEach(quake => {
         if (quake.time <= currentTime) {
             const age = currentTime - quake.time;
             const color = getColorByAge(age);
@@ -71,8 +74,10 @@ function updateMap() {
                 fillOpacity: 0.6,
                 radius: quake.mag * MAGNITUDE_SCALE
             });
+
             circle.bindPopup(`Magnitude: ${quake.mag}<br>Place: ${quake.place}<br>Time: ${new Date(quake.time).toLocaleString()}`);
             circle.addTo(quakeLayerGroup);
+            circle.bringToFront(); // Bring the circle to the front
         }
     });
 }
