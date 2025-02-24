@@ -1,25 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>US Earthquake Map</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-</head>
-<body>
-    <h1>US Earthquake Map</h1>
-    <div class="controls">
-        <label>Time Range:</label>
-        <input type="range" id="timeline" min="1" max="365" value="365">
-        <label>Playback Speed:</label>
-        <input type="range" id="speed" min="100" max="900" value="500">
-        <button id="play">Play/Pause</button>
-        <label>Loop:</label>
-        <input type="checkbox" id="loop">
-    </div>
-    <div id="map"></div>
-    <script src="script.js"></script>
-</body>
-</html>
+<div id="controls">
+    <label>Time Range:</label>
+    <span id="startDateLabel"></span>
+    <input type="range" id="timeRange" min="0" max="365" step="1" value="365">
+    <span id="endDateLabel"></span>
+
+    <label>Speed:</label>
+    <input type="range" id="speed" min="500" max="5000" step="500" value="1000">
+    <span id="speedLabel">Normal</span>
+
+    <label for="loop">Loop:</label>
+    <input type="checkbox" id="loop">
+
+    <button id="play">Play</button>
+</div>
+
+<!-- Date Display -->
+<div id="dateDisplay">Date: <span id="currentDate"></span></div>
