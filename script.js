@@ -1,7 +1,14 @@
+// Constants
+const USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
+const ONE_DAY_MS = 86400000;
+const MAGNITUDE_SCALE = 50000;
+
+// Map and Data
 let map;
 let earthquakes = [];
+let quakeLayerGroup; // Feature group for earthquake markers
 let currentTime;
-let playbackSpeed = 1000; // Default speed
+let playbackSpeed = 1000;
 let playing = false;
 let loop = false;
 let interval;
@@ -9,97 +16,98 @@ let interval;
 // Initialize Leaflet Map
 function initMap() {
     map = L.map('map').setView([37.0902, -95.7129], 4);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
-
+    quakeLayerGroup = L.featureGroup().addTo(map); // Initialize the feature group
     fetchEarthquakeData();
 }
 
-// Fetch and process earthquake data
-function fetchEarthquakeData() {
-    fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson")
-        .then(response => response.json())
-        .then(data => {
-            earthquakes = data.features.map(quake => {
-                const coords = quake.geometry.coordinates;
-                return {
-                    lat: coords[1],
-                    lng: coords[0],
-                    mag: quake.properties.mag,
-                    time: quake.properties.time
-                };
-            });
+// Fetch and Process Earthquake Data
+async function fetchEarthquakeData() { // Use async/await for cleaner code
+    try {
+        const response = await fetch(USGS_URL);
+        const data = await response.json();
 
-            // Start at the earliest earthquake
-            let earliestTime = Math.min(...earthquakes.map(q => q.time));
-            let latestTime = Date.now();
+        earthquakes = data.features.map(quake => {
+            const coords = quake.geometry.coordinates;
+            return {
+                lat: coords[1],
+                lng: coords[0],
+                mag: quake.properties.mag,
+                time: quake.properties.time,
+                place: quake.properties.place //add place for popup
+            };
+        });
 
-            currentTime = earliestTime;
+        const earliestTime = Math.min(...earthquakes.map(q => q.time));
+        const latestTime = Date.now();
 
-            document.getElementById("startDateLabel").textContent = formatDate(earliestTime);
-            document.getElementById("endDateLabel").textContent = formatDate(latestTime);
+        currentTime = earliestTime;
 
-            updateMap();
-            updateDateDisplay();
-        })
-        .catch(error => console.error("Error fetching earthquake data:", error));
+        document.getElementById("startDateLabel").textContent = formatDate(earliestTime);
+        document.getElementById("endDateLabel").textContent = formatDate(latestTime);
+
+        updateMap();
+        updateDateDisplay();
+    } catch (error) {
+        console.error("Error fetching earthquake data:", error);
+        alert("Failed to load earthquake data. Please try again later."); // User-friendly error
+    }
 }
 
-// Update the map by adding earthquakes that have occurred up to `currentTime`
+// Update the Map
 function updateMap() {
-    map.eachLayer(layer => {
-        if (layer instanceof L.Circle) map.removeLayer(layer);
-    });
+    quakeLayerGroup.clearLayers(); // Clear existing markers
 
     earthquakes.forEach(quake => {
         if (quake.time <= currentTime) {
-            let age = currentTime - quake.time;
-            let color = getColorByAge(age);
+            const age = currentTime - quake.time;
+            const color = getColorByAge(age);
 
-            L.circle([quake.lat, quake.lng], {
+            const circle = L.circle([quake.lat, quake.lng], {
                 color,
                 fillColor: color,
                 fillOpacity: 0.6,
-                radius: quake.mag * 50000
-            }).addTo(map);
+                radius: quake.mag * MAGNITUDE_SCALE
+            });
+            circle.bindPopup(`Magnitude: ${quake.mag}<br>Place: ${quake.place}<br>Time: ${new Date(quake.time).toLocaleString()}`);
+            circle.addTo(quakeLayerGroup);
         }
     });
 }
 
-// Determine color based on earthquake age
+// Determine Color Based on Earthquake Age
 function getColorByAge(age) {
-    if (age < 3600000) return "red";         // Less than 1 hour old
-    if (age < 86400000) return "orange";     // Less than 1 day old
-    if (age < 604800000) return "yellow";    // Less than 1 week old
-    if (age < 2592000000) return "white";    // Less than 1 month old
-    return null; // Older than 1 month (won't be shown)
+    if (age < 3600000) return "red";
+    if (age < 86400000) return "orange";
+    if (age < 604800000) return "yellow";
+    if (age < 2592000000) return "white";
+    return null;
 }
 
-// Format timestamp into readable date
+// Format Timestamp into Readable Date
 function formatDate(timestamp) {
-    let date = new Date(timestamp);
-    return date.toISOString().split("T")[0]; // YYYY-MM-DD format
+    return new Date(timestamp).toISOString().split("T")[0];
 }
 
-// Update the date display
+// Update the Date Display
 function updateDateDisplay() {
     document.getElementById("currentDate").textContent = formatDate(currentTime);
 }
 
-// Start playback
+// Playback Control
 document.getElementById("play").addEventListener("click", () => {
     if (playing) {
         clearInterval(interval);
         playing = false;
     } else {
         interval = setInterval(() => {
-            currentTime += 86400000; // Move forward one day
+            currentTime += ONE_DAY_MS;
 
             if (currentTime > Date.now()) {
                 if (loop) {
-                    currentTime = Math.min(...earthquakes.map(q => q.time)); // Restart at the beginning
+                    currentTime = Math.min(...earthquakes.map(q => q.time));
                 } else {
                     clearInterval(interval);
                     playing = false;
@@ -113,30 +121,29 @@ document.getElementById("play").addEventListener("click", () => {
     }
 });
 
-// Speed control
+// Speed Control
 document.getElementById("speed").addEventListener("input", (e) => {
     playbackSpeed = 2000 - e.target.value;
-    let speedLabel = "Normal";
-    if (playbackSpeed < 750) speedLabel = "Fast";
-    else if (playbackSpeed > 1250) speedLabel = "Slow";
+    const speedLabel = playbackSpeed < 750 ? "Fast" : playbackSpeed > 1250 ? "Slow" : "Normal";
     document.getElementById("speedLabel").textContent = speedLabel;
 });
 
-// Loop toggle
+// Loop Toggle
 document.getElementById("loop").addEventListener("change", (e) => {
     loop = e.target.checked;
 });
 
 // Time Range Control
 document.getElementById("timeRange").addEventListener("input", (e) => {
-    let rangeDays = parseInt(e.target.value);
-    let earliestTime = Math.min(...earthquakes.map(q => q.time));
-    let latestTime = Date.now();
-
-    currentTime = latestTime - (rangeDays * 86400000);
+    const rangeDays = parseInt(e.target.value);
+    const latestTime = Date.now();
+    currentTime = latestTime - (rangeDays * ONE_DAY_MS);
     document.getElementById("startDateLabel").textContent = formatDate(currentTime);
     updateMap();
     updateDateDisplay();
+    if(!playing){
+        clearInterval(interval);
+    }
 });
 
 window.onload = initMap;
